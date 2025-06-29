@@ -1,0 +1,107 @@
+#include <SoftwareSerial.h>
+
+// Pin Definitions
+int tonePin = 2;
+int toneFreq = 1000;
+int ledPin = 13;
+int buttonPin = 8;
+int debounceDelay = 30;
+int dotLength = 240;
+
+// Morse Code Timing
+int dotSpace = dotLength;
+int dashLength = dotLength * 3;
+int letterSpace = dotLength * 3;
+int wordSpace = dotLength * 7;
+float wpm = 1200.0 / dotLength;
+
+// Variables for Morse Code
+int t1, t2, onTime, gap;
+bool newLetter, newWord;
+String dashSeq = "";
+char keyLetter;
+String decodedMessage = "";
+
+// UART Communication with ESP32
+SoftwareSerial ESP32(10, 11); // RX (10), TX (11)
+
+// Morse Code Lookup Tables
+char* letters[] = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---",
+                    "-.-", ".-..", "--", "-.", "---", ".--.", "--.-", ".-.", "...", "-",
+                    "..-", "...-", ".--", "-..-", "-.--", "--.." };
+char* numbers[] = { "-----", ".----", "..---", "...--", "....-", ".....", "-....", "--...", "---..", "----." };
+
+void setup() {
+  // Pin Initialization
+  pinMode(ledPin, OUTPUT);
+  pinMode(tonePin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  // Serial Communication Initialization
+  Serial.begin(9600);     // Debugging through Serial Monitor
+  ESP32.begin(9600);      // Communication with ESP32
+
+  Serial.println("Morse Code Decoder/Encoder Initialized");
+}
+
+void loop() {
+  handleMorseInput();
+
+  // Check if the decoded message is ready to send
+  if (decodedMessage.length() > 0) {
+    ESP32.println(decodedMessage); // Send to ESP32
+    Serial.println("Sent to ESP32: " + decodedMessage);
+    decodedMessage = ""; // Clear the message buffer
+  }
+}
+
+void handleMorseInput() {
+  if (digitalRead(buttonPin) == LOW) {
+    newLetter = true;
+    newWord = true;
+    t1 = millis();
+    digitalWrite(ledPin, HIGH);
+    tone(tonePin, toneFreq);
+
+    while (digitalRead(buttonPin) == LOW) delay(debounceDelay);
+
+    digitalWrite(ledPin, LOW);
+    noTone(tonePin);
+    t2 = millis();
+    onTime = t2 - t1;
+
+    if (onTime <= dotLength * 1.5) {
+      dashSeq += ".";  // It's a dot
+      Serial.println("Input detected: Dot (.)");
+    } else {
+      dashSeq += "-";  // It's a dash
+      Serial.println("Input detected: Dash (-)");
+    }
+  }
+
+  gap = millis() - t2;
+  if (newLetter && gap >= letterSpace) {
+    keyLetter = decodeMorse(dashSeq);
+    Serial.print("Decoded Letter: ");
+    Serial.println(keyLetter);
+
+    decodedMessage += keyLetter;
+    dashSeq = "";
+    newLetter = false;
+  }
+  if (newWord && gap >= wordSpace * 1.5) {
+    Serial.println("Word Gap Detected");
+    decodedMessage += " "; // Append a space for word gap
+    newWord = false;
+  }
+}
+
+char decodeMorse(String sequence) {
+  for (int i = 0; i < 26; i++) {
+    if (sequence == letters[i]) return 'A' + i;
+  }
+  for (int i = 0; i < 10; i++) {
+    if (sequence == numbers[i]) return '0' + i;
+  }
+  return '?'; // Unknown sequence
+}

@@ -1,0 +1,57 @@
+#include <WiFi.h>
+#include <WiFiClient.h>
+
+// Wi-Fi Configuration
+const char* ssid = "B";
+const char* password = "12345678";
+const char* esp8266_ip = "192.168.235.161"; // Replace with the ESP8266's IP address
+const int port = 80;
+
+WiFiClient client;
+
+// UART Configuration
+#define RX_PIN 16
+#define TX_PIN 17
+HardwareSerial ArduinoSerial(2);
+
+void setup() {
+  // Initialize Serial for Debugging
+  Serial.begin(115200);
+
+  // Initialize UART for Arduino Communication
+  ArduinoSerial.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
+
+  // Connect to Wi-Fi
+  connectToWiFi();
+}
+
+void loop() {
+  if (ArduinoSerial.available()) {
+    String message = ArduinoSerial.readStringUntil('\n');
+    Serial.println("Received from Arduino: " + message);
+
+    if (message.length() > 0) {
+      sendMessage(message);
+    }
+  }
+}
+
+void connectToWiFi() {
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to Wi-Fi");
+}
+
+void sendMessage(String message) {
+  if (!client.connect(esp8266_ip, port)) {
+    Serial.println("Failed to connect to ESP8266");
+    return;
+  }
+  client.println(message);
+  Serial.println("Sent to ESP8266: " + message);
+  client.stop();
+}
