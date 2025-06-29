@@ -30,6 +30,8 @@ This project demonstrates a wireless Morse code communication system using an Ar
 - Expand to bidirectional communication
 
 ## Photos
+![Sender](https://github.com/user-attachments/assets/4901296f-5970-4dcc-af03-32eec4088eb2)
+![Reciever](https://github.com/user-attachments/assets/15130b47-dca3-41e4-ad16-7eecc8abbc4f)
 
 
 ## Acknowledgments
